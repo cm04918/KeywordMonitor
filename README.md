@@ -3,8 +3,17 @@
 
 ## 简介
 
-KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat 监控群聊关键词、URL链接和文件内容的插件。当检测到违规内容时，插件会自动发送警告消息，并要求用户在2分钟内撤回违规消息。如果用户未在规定时间内撤回消息，插件将自动将其移出群聊。该插件旨在帮助群管理员自动管理群聊内容，减少人工干预，确保群聊环境的健康和安全。
+KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat 利用GTP来监控群聊关键词、URL链接和文件内容的插件。当检测到违规内容时，插件会自动发送警告消息，并要求用户在2分钟内撤回违规消息。如果用户未在规定时间内撤回消息，插件将自动将其移出群聊。该插件旨在帮助群管理员自动管理群聊内容，减少人工干预，确保群聊环境的健康和安全。
 
+根目录下comfig.json需要有配置，本插件是通过AI分析URL是否违规：
+```json
+    "model": "kimi",
+    "open_ai_api_base": "https://***/v1",
+    "open_ai_api_key": "sk-xTYifeB7vMG2mUp4111816A4C6124f8cA0Dc741528E04cDd",
+    "gewechat_app_id": "wx_d***********",
+    "gewechat_base_url": "http://192.168.10.123:2531/v2/api",
+    "gewechat_token": "2*******************",
+```
 ## 此插件只是娱乐，可能不会再更新，要改原版的内容，官方一更新，我都不记得改啥了！
 
 ![本地图片](./img/20250119204945.png)
