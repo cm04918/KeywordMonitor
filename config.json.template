@@ -1,0 +1,28 @@
+{
+  // 是否启用插件
+  "enabled": true,
+
+  // 监控的关键词列表，消息中包含这些关键词时会被视为违规
+  "keywords": ["话费充值打折","抖音退费","机票退改签","会员退费","培训学费退费","网络高薪兼职"],
+
+  // 需要监控的群名称列表，只有这些群的消息会被监控
+  "monitored_groups": ["技术交流群", "产品讨论群"],
+
+  // 白名单用户ID列表，白名单用户发送的消息不会被监控
+  "whitelist": ["user1", "user2"],
+
+  // 是否忽略@机器人的消息
+  "ignore_at_bot_msg": true,
+
+  // 是否开启URL链接检测
+  "url_check_enabled": true,
+
+  // 是否开启关键词检测
+  "keyword_check_enabled": true,
+
+  // 是否开启文件内容检测
+  "file_check_enabled": true,
+
+  // 警告次数限制，达到次数后会将用户移出群聊
+  "warning_limit": 2
+}
