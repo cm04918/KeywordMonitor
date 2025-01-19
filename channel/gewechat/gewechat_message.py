@@ -10,6 +10,7 @@ from lib.gewechat import GewechatClient
 import requests
 import xml.etree.ElementTree as ET
 
+
 # 私聊信息示例
 """
 {
@@ -399,7 +400,7 @@ class GeWeChatMessage(ChatMessage):
             content = msg['Data']['Content']['string']
             if "<sysmsg type=\"revokemsg\">" in content:  # 撤回消息
                 self.ctype = ContextType.REVOKE
-                logger.debug(f"[gewechat] Revoke message content: {content}")  # 添加日志输出
+                logger.debug(f"[gewechat] Revoke message content: {content}")  # 打印完整的 XML 内容
         
                 # 检查 content 是否为空
                 if not content.strip():
@@ -408,20 +409,37 @@ class GeWeChatMessage(ChatMessage):
                     return
         
                 try:
-                    # 清理 XML 内容，移除不必要的前缀或后缀
-                    xml_start = content.find('<?xml')
-                    if xml_start != -1:
-                        content = content[xml_start:]  # 只保留 XML 部分
-        
+                    # 提取 XML 部分
+                    # 假设内容格式为 "用户名称:XML"，找到第一个 '<' 符号
+                    xml_start = content.find('<')
+                    if xml_start == -1:
+                        logger.error("[gewechat] No valid XML content found")
+                        self.content = "撤回了一条消息"
+                        return
+
+                    # 提取 XML 部分
+                    xml_content = content[xml_start:]
+
+                    # 清理非法字符
+                    xml_content = self.clean_xml_content(xml_content)
+
+                    # 打印清理后的 XML 内容
+                    logger.debug(f"[gewechat] Cleaned XML content: {xml_content}")
+
                     # 解析 XML
-                    root = ET.fromstring(content)
+                    root = ET.fromstring(xml_content)
                     revokemsg = root.find('.//revokemsg')
                     if revokemsg is not None:
                         replacemsg = revokemsg.find('replacemsg')
                         if replacemsg is not None:
                             self.content = replacemsg.text
+                        else:
+                            self.content = "撤回了一条消息"
+                    else:
+                        self.content = "撤回了一条消息"
                 except ET.ParseError as e:
                     logger.error(f"[gewechat] Failed to parse revoke message XML: {e}")
+                    logger.error(f"[gewechat] Raw XML content: {xml_content}")  # 打印原始 XML 内容
                     self.content = "撤回了一条消息"  # 直接设置为默认文本
             elif self.is_group:
                 if any(note_bot_join_group in content for note_bot_join_group in notes_bot_join_group):  # 邀请机器人加入群聊
@@ -521,6 +539,14 @@ class GeWeChatMessage(ChatMessage):
 
         self.my_msg = self.msg['Wxid'] == self.from_user_id  # 消息是否来自自己
         self._parse_message_content()
+        
+    @staticmethod
+    def clean_xml_content(content):
+        """清理 XML 内容中的非法字符"""
+        import re
+        # 移除非法字符（如控制字符）
+        content = re.sub(r'[\x00-\x1F\x7F]', '', content)
+        return content
         
     def _parse_message_content(self):
         """根据消息类型解析消息内容"""
