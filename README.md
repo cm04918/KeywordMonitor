@@ -3,7 +3,18 @@
 
 ## 简介
 
-KeywordMonitor 是一个用于监控群聊关键词、URL链接和文件内容的插件。当检测到违规内容时，插件会自动发送警告消息，并要求用户在2分钟内撤回违规消息。如果用户未在规定时间内撤回消息，插件将自动将其移出群聊。该插件旨在帮助群管理员自动管理群聊内容，减少人工干预，确保群聊环境的健康和安全。
+KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat 监控群聊关键词、URL链接和文件内容的插件。当检测到违规内容时，插件会自动发送警告消息，并要求用户在2分钟内撤回违规消息。如果用户未在规定时间内撤回消息，插件将自动将其移出群聊。该插件旨在帮助群管理员自动管理群聊内容，减少人工干预，确保群聊环境的健康和安全。
+
+## 此插件只是娱乐，可能不会再更新，要改原版的内容，官方一更新，我都不记得改啥了！
+
+
+## 插件使用要求：
+### 替换文件：(请替换前备份以前的文件)
+bridge\context.py
+channel\gewechat\gewechat_channel.py
+channel\gewechat\gewechat_message.py
+
+### 将插件安装到 /plugins/KeywordMonitorPlugin
 
 ## 功能特性
 
