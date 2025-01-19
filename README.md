@@ -7,12 +7,15 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
 
 ## 此插件只是娱乐，可能不会再更新，要改原版的内容，官方一更新，我都不记得改啥了！
 
+![本地图片](./img/20250119204945.png)
+
+![本地图片](./img/20250119205507.png)
 
 ## 插件使用要求：
 ### 替换文件：(请替换前备份以前的文件)
-bridge\context.py
-channel\gewechat\gewechat_channel.py
-channel\gewechat\gewechat_message.py
+   - bridge\context.py
+   - channel\gewechat\gewechat_channel.py
+   - channel\gewechat\gewechat_message.py
 
 ### 将插件安装到 /plugins/KeywordMonitorPlugin
 
