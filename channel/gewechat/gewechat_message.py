@@ -490,13 +490,12 @@ class GeWeChatMessage(ChatMessage):
         if self.is_group:
             # 如果是群聊消息，获取实际发送者信息
             # 获取实际发送者wxid
-            self.actual_user_id = self.msg.get('Data', {}).get('Content', {}).get('string', '').split(':', 1)[
-                0]  # 实际发送者ID
+            self.actual_user_id = self.msg.get('Data', {}).get('Content', {}).get('string', '').split(':', 1)[0]  # 实际发送者ID
+        
             # 从群成员列表中获取实际发送者信息
             chatroom_member_list_response = self.client.get_chatroom_member_list(self.app_id, self.from_user_id)
-            if chatroom_member_list_response.get('ret', 0) == 200 and chatroom_member_list_response.get('data', {}).get(
-                    'memberList', []):
-                # 从群成员列表中匹配acual_user_id
+            if chatroom_member_list_response.get('ret', 0) == 200 and chatroom_member_list_response.get('data', {}).get('memberList', []):
+                # 从群成员列表中匹配actual_user_id
                 for member_info in chatroom_member_list_response['data']['memberList']:
                     if member_info['wxid'] == self.actual_user_id:
                         # 先获取displayName，如果displayName为空，再获取nickName
@@ -504,11 +503,12 @@ class GeWeChatMessage(ChatMessage):
                         if not self.actual_user_nickname:
                             self.actual_user_nickname = member_info.get('nickName', '')
                         break
+        
             # 如果actual_user_nickname为空，使用actual_user_id作为nickname
             if not self.actual_user_nickname:
                 self.actual_user_nickname = self.actual_user_id
-
-            # 检查是否被at
+        
+            # 检查是否被@
             msg_source = self.msg.get('Data', {}).get('MsgSource', '')
             self.is_at = False
             xml_parsed = False
@@ -523,15 +523,20 @@ class GeWeChatMessage(ChatMessage):
                         logger.debug(f"[gewechat] is_at: {self.is_at}. atuserlist: {atuserlist}")
                 except ET.ParseError:
                     pass
-
+        
             # 只有在XML解析失败时才从PushContent中判断
             if not xml_parsed:
                 self.is_at = '在群聊中@了你' in self.msg.get('Data', {}).get('PushContent', '')
                 logger.debug(f"[gewechat] Parse is_at from PushContent. self.is_at: {self.is_at}")
-
+        
             # 如果是群消息，使用正则表达式去掉wxid前缀和@信息
-            self.content = re.sub(f'{self.actual_user_id}:\n', '', self.content)  # 去掉wxid前缀
-            self.content = re.sub(r'@[^\u2005]+\u2005', '', self.content)  # 去掉@信息
+            if isinstance(self.content, str):
+                self.content = re.sub(f'{self.actual_user_id}:\n', '', self.content)  # 去掉wxid前缀
+                self.content = re.sub(r'@[^\u2005]+\u2005', '', self.content)  # 去掉@信息
+            else:
+                # 如果 self.content 不是字符串类型，可以根据需要处理
+                logger.warning(f"[gewechat] self.content is not a string, type: {type(self.content)}")
+                self.content = str(self.content)  # 将其转换为字符串，或者根据具体情况处理
         else:
             # 如果不是群聊消息，保持结构统一，也要设置actual_user_id和actual_user_nickname
             self.actual_user_id = self.other_user_id
