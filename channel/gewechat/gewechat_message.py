@@ -348,6 +348,15 @@ class GeWeChatMessage(ChatMessage):
             self.ctype = ContextType.IMAGE
             self.content = TmpDir().path() + str(self.msg_id) + ".png"
             self._prepare_fn = self.download_image
+            
+        elif msg_type == 47:  # 表情消息
+            self.ctype = ContextType.EMOJI
+            self.content = self._parse_emoji_message()
+            
+        elif msg_type == 43:  # 视频消息
+            self.ctype = ContextType.VIDEO
+            self.content = self._parse_video_message()
+            
         elif msg_type == 49:  # 引用消息，小程序，公众号等
             # After getting content_xml
             content_xml = msg['Data']['Content']['string']
@@ -476,6 +485,9 @@ class GeWeChatMessage(ChatMessage):
                         logger.error(f"[gewechat] Failed to parse group join XML: {e}")
                         # Fall back to regular content handling
                         pass
+        elif msg_type == 48:  # 地理位置消息
+            self.ctype = ContextType.LOCATION
+            self.content = self._parse_location_message()
         else:
             raise NotImplementedError("Unsupported message type: Type:{}".format(msg_type))
 
@@ -586,6 +598,18 @@ class GeWeChatMessage(ChatMessage):
             self.content = self._parse_red_packet_message()
         else:
             self.content = self.msg['Data']['Content']['string']
+    
+        # 确保 self.content 不为 None
+        if self.content is None:
+            self.content = ""  # 设置为空字符串或其他默认值
+            logger.warning(f"[gewechat] self.content is None, setting to empty string")
+            
+
+    def _parse_emoji_message(self):
+        """解析表情消息"""
+        content_xml = self.msg['Data']['Content']['string']
+        # 解析表情的 XML 内容，获取表情的 URL 或其他信息
+        return content_xml
 
     def _parse_image_message(self):
         """解析图片消息"""
