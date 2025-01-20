@@ -1,6 +1,6 @@
 {
   "enabled": true,
-  "keywords": ["话费充值打折","抖音退费","机票退改签","会员退费","培训学费退费","网络高薪兼职"],
+  "keywords": ["话费充值打折","抖音退费","机票退改签","会员退费","培训学费退费","网络高薪兼职","兼职刷单"],
   "monitored_groups": ["三人行","AI外卖员"],
   "whitelist": [],
   "ignore_at_bot_msg": true,
@@ -22,5 +22,16 @@
     ".*support\\.weixin\\.qq\\.com/update.*",
     ".*support\\.weixin\\.qq\\.com/security.*",
     ".*mp\\.weixin\\.qq\\.com/mp/waerrpage.*"
+  ],
+  "whitelist_urls": [
+    ".*wxapp\\.tc\\.qq\\.com.*",
+    ".*weixin\\.qq\\.com.*",
+    ".*\\.gov\\.cn.*",
+    ".*\\.edu\\.cn.*",
+    ".*\\.ac\\.cn.*",
+    ".*\\.people\\.com\\.cn.*",
+    ".*\\.xinhuanet\\.com.*",
+    ".*\\.cctv\\.com.*",
+    ".*\\.china\\.com\\.cn.*"
   ]
 }
