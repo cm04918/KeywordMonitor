@@ -27,6 +27,7 @@ class KeywordMonitorPlugin(Plugin):
     # 常量定义
     PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
     WARNING_FILE = os.path.join(PLUGIN_DIR, "user_warnings.json")  # 将 WARNING_FILE 定义移到类的顶层作用域
+
     def __init__(self):
         super().__init__()
         self.recalled_messages = set()  # 用于存储撤回的消息ID
@@ -74,14 +75,14 @@ class KeywordMonitorPlugin(Plugin):
                 r'.*affiliate\.com.*',
                 r'.*promo\.com.*',
             ])
-            #不支持的 URL 列表
+            # 不支持的 URL 列表
             self.UNSUPPORTED_URL_PATTERNS = self.config.get("unsupported_url_patterns", [
                 r'.*finder\.video\.qq\.com.*',
                 r'.*support\.weixin\.qq\.com/update.*',
                 r'.*support\.weixin\.qq\.com/security.*',
                 r'.*mp\.weixin\.qq\.com/mp/waerrpage.*',
             ])
-            
+
             # 从配置文件中提取 whitelist_urls 白名单
             self.whitelist_urls = self.config.get("whitelist_urls", [
                 r'.*wxapp\.tc\.qq\.com.*',  # 默认白名单 URL
@@ -182,7 +183,6 @@ class KeywordMonitorPlugin(Plugin):
             logger.error(f"[KeywordMonitor] 保存用户违规记录失败: {e}")
 
     def _analyze_content(self, content):
-
         """分析内容是否包含违规信息"""
         prompt = (
             "请仔细分析以下内容，并判断是否包含以下违规信息：\n"
@@ -209,43 +209,63 @@ class KeywordMonitorPlugin(Plugin):
             "\n"
             "内容：\n" + content
         )
-
+    
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {conf().get('open_ai_api_key')}"
         }
-
+    
         payload = {
             "model": conf().get("model", "kimi-silent"),
             "messages": [
                 {"role": "user", "content": prompt}
             ]
         }
-
+    
         try:
-            logger.info(f"[KeywordMonitor] 开始分析内容: {content[:50]}...")  # 只记录前50个字符
+            #logger.info(f"[KeywordMonitor] 开始分析内容: {content[:50]}...")  # 只记录前50个字符
+            logger.info(f"[KeywordMonitor] 开始分析内容: {content}")  # 只记录前50个字符
+            logger.info(f"[KeywordMonitor] 发送分析请求到 OpenAI API，内容长度: {len(content)}")
+            
+            # 发送请求到 OpenAI API
             response = requests.post(f"{conf().get('open_ai_api_base')}/chat/completions", headers=headers, json=payload)
             response.raise_for_status()
+            
+            logger.info(f"[KeywordMonitor] 收到 OpenAI API 响应，状态码: {response.status_code}")
+            
             response_data = response.json()
+            logger.info(f"[KeywordMonitor] OpenAI API 响应数据: {response_data}")
+            
             if "choices" in response_data and len(response_data["choices"]) > 0:
                 first_choice = response_data["choices"][0]
                 if "message" in first_choice and "content" in first_choice["message"]:
                     result = first_choice["message"]["content"].strip()
                     logger.info(f"[KeywordMonitor] 内容分析结果: {result}")
                     return result
-            logger.info(f"[KeywordMonitor] 内容分析结果: 合规")
+            
+            logger.info(f"[KeywordMonitor] 内容分析结果: 合规 (默认)")
             return "合规"
         except Exception as e:
             logger.error(f"[KeywordMonitor] 分析内容失败: {e}")
+            logger.info(f"[KeywordMonitor] 内容分析失败，默认返回合规")
             return "合规"
 
     def _extract_all_links(self, message_content):
         """提取消息中的所有链接（包括网页分享、小程序等）"""
-        url_pattern = re.compile(r'(https?://[^\s]+|www\.[^\s]+|[^\s]+\.(com|cn|net|org)[^\s]*)')
-        urls = url_pattern.findall(message_content)
-        extracted_urls = [url[0] for url in urls]
-        logger.info(f"[KeywordMonitor] 提取到的链接: {extracted_urls}")
-        return extracted_urls
+        # 提取 XML 格式的 URL（适用于小程序和网页分享）
+        xml_url_pattern = re.compile(r'<url>(https?://[^\s]+)</url>')
+        xml_urls = xml_url_pattern.findall(message_content)
+        
+        # 提取普通文本中的 URL（适用于用户直接发送的文本消息）
+        plain_url_pattern = re.compile(
+            r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+        )
+        plain_urls = plain_url_pattern.findall(message_content)
+        
+        # 合并结果并去重
+        urls = list(set(xml_urls + plain_urls))
+        logger.info(f"[KeywordMonitor] 提取到的链接: {urls}")
+        return urls
 
     def _extract_file_content(self, file_path):
         """提取文件内容"""
@@ -272,7 +292,7 @@ class KeywordMonitorPlugin(Plugin):
         if any(re.search(pattern, url) for pattern in self.whitelist_urls):
             logger.info(f"[KeywordMonitor] URL {url} 在白名单中，已忽略")
             return False
-    
+
         # 检查 URL 是否在不支持的 URL 列表中
         return any(re.search(pattern, url) for pattern in self.UNSUPPORTED_URL_PATTERNS)
 
@@ -295,15 +315,15 @@ class KeywordMonitorPlugin(Plugin):
             if context.type == ContextType.EMOJI:
                 logger.info(f"[KeywordMonitor] 消息 {getattr(msg, 'msg_id', '未知')} 是表情消息，已忽略 URL 检测")
                 return
-        
+    
             # 打印 msg 对象的完整信息
             logger.info(f"[KeywordMonitor] msg 对象信息: {str(msg.__dict__)[:50]}")
-        
+    
             # 记录消息的详细信息
             message_type = getattr(msg, 'type', None)  # 尝试获取 type 属性
             if message_type is None:
                 message_type = context.type  # 如果 type 属性不存在，使用 context.type
-        
+    
             logger.info(f"[KeywordMonitor] 消息详细信息: "
                         f"消息ID: {getattr(msg, 'msg_id', '未知')}, "
                         f"发送者ID: {getattr(msg, 'actual_user_id', '未知')}, "
@@ -312,60 +332,68 @@ class KeywordMonitorPlugin(Plugin):
                         f"群名称: {getattr(msg, 'other_user_nickname', '未知')}, "
                         f"消息类型: {message_type}, "
                         f"消息内容: {getattr(msg, 'content', '未知')[:100]}")
-        
+    
             # 如果配置了忽略@机器人的消息，则检查是否@机器人
             if self.ignore_at_bot_msg and msg.is_at:
                 logger.info(f"[KeywordMonitor] 消息 {getattr(msg, 'msg_id', '未知')} 是@机器人的消息，已忽略")
                 return
-        
+    
             # 获取消息内容、发送者ID和群ID
             message_content = context.content
             sender_wxid = getattr(msg, 'actual_user_id', '未知')
             group_id = getattr(msg, 'from_user_id', '未知')
-        
+    
             # 获取群名称
             group_name = getattr(msg, 'other_user_nickname', '未知')
-        
+    
             # 检查群是否在监控列表中
             if self.monitored_groups and group_name not in self.monitored_groups:
                 logger.info(f"[KeywordMonitor] 群 {group_name} 不在监控列表中，已忽略")
                 return
-        
+    
             # 检查发送者是否在白名单中
             if sender_wxid in self.whitelist:
                 logger.info(f"[KeywordMonitor] 发送者 {sender_wxid} 在白名单中，已忽略")
                 return
-        
+    
             # 检查消息类型是否为撤回消息
             if context.type == ContextType.REVOKE:  # 处理撤回消息
                 self._handle_recall_message(msg)
                 return
-        
+    
+            # 标记是否已经发送警告
+            warning_sent = False
+    
             # 检查消息内容是否包含关键词
             if self.keyword_check_enabled and any(keyword in message_content for keyword in self.keywords):
                 self._handle_violation(sender_wxid, group_id, group_name, msg, "关键词违规")
-        
+                warning_sent = True
+    
             # 检查消息内容是否包含URL链接
-            if self.url_check_enabled:
+            if self.url_check_enabled and not warning_sent:
                 urls = self._extract_all_links(message_content)
                 for url in urls:
                     # 判断 URL 是否是不支持的 URL
                     if self.is_unsupported_url(url):
                         self._handle_violation(sender_wxid, group_id, group_name, msg, "（小程序/视频号）")
-                        continue
-        
+                        warning_sent = True
+                        break
+    
                     # 判断 URL 是否包含广告内容
                     if self.is_ad_url(url):
                         self._handle_violation(sender_wxid, group_id, group_name, msg, "广告链接")
-                        continue
-        
+                        warning_sent = True
+                        break
+    
                     # 分析URL内容
                     result = self._analyze_content(url)
                     if result != "合规":
                         self._handle_violation(sender_wxid, group_id, group_name, msg, result)
-        
+                        warning_sent = True
+                        break
+    
             # 检查消息内容是否包含文件
-            if self.file_check_enabled and context.type == ContextType.FILE:
+            if self.file_check_enabled and context.type == ContextType.FILE and not warning_sent:
                 file_path = context.content
                 logger.info(f"[KeywordMonitor] 检测到文件消息，文件路径: {file_path}")
                 file_content = self._extract_file_content(file_path)
@@ -374,9 +402,10 @@ class KeywordMonitorPlugin(Plugin):
                     result = self._analyze_content(file_content)
                     if result != "合规":
                         self._handle_violation(sender_wxid, group_id, group_name, msg, result)
+                        warning_sent = True
                 else:
                     logger.error(f"[KeywordMonitor] 文件内容提取失败: {file_path}")
-        
+    
         except Exception as e:
             logger.error(f"[KeywordMonitor] 处理消息异常: {e}")
 
@@ -386,7 +415,7 @@ class KeywordMonitorPlugin(Plugin):
             # 解析消息内容中的 XML
             content = str(msg.content)  # 确保 content 是字符串类型
             logger.info(f"[KeywordMonitor] 收到撤回消息内容: {content}")
-    
+
             # 尝试解析 XML
             try:
                 # 清理 XML 内容，移除不必要的前缀或后缀
@@ -394,21 +423,21 @@ class KeywordMonitorPlugin(Plugin):
                 if xml_start == -1:
                     logger.error(f"[KeywordMonitor] 撤回消息内容中未找到有效的 XML 部分: {content}")
                     return
-    
+
                 # 只保留 XML 部分
                 content = content[xml_start:]
-    
+
                 # 检查 XML 是否完整
                 if not content.endswith('</sysmsg>'):
                     logger.error(f"[KeywordMonitor] 撤回消息内容不完整: {content}")
                     return
-    
+
                 # 解析 XML
                 root = ET.fromstring(content)
             except ET.ParseError as e:
                 logger.error(f"[KeywordMonitor] 解析撤回消息 XML 失败: {e}")
                 return
-    
+
             # 检查是否是撤回消息
             if root.tag == "sysmsg" and root.attrib.get("type") == "revokemsg":
                 revokemsg = root.find("revokemsg")
@@ -420,7 +449,7 @@ class KeywordMonitorPlugin(Plugin):
                         # 获取撤回提示信息
                         replacemsg = revokemsg.find("replacemsg").text if revokemsg.find("replacemsg") is not None else "未知用户撤回了一条消息"
                         logger.info(f"[KeywordMonitor] {replacemsg}, 消息ID: {newmsgid}")
-    
+
                         # 记录撤回的消息ID（使用 newmsgid）
                         self.recalled_messages.add(str(newmsgid))  # 确保 newmsgid 是字符串类型
                         logger.info(f"[KeywordMonitor] 消息 {newmsgid} 已被撤回")
@@ -428,24 +457,23 @@ class KeywordMonitorPlugin(Plugin):
                         logger.warning(f"[KeywordMonitor] 撤回消息中未找到 'newmsgid' 字段")
         except Exception as e:
             logger.error(f"[KeywordMonitor] 处理撤回消息失败: {e}")
-            
-            
+
     def _handle_violation(self, sender_wxid, group_id, group_name, msg, violation_type):
         """处理违规行为"""
         # 更新用户违规记录
         if sender_wxid not in self.warning_records:
             self.warning_records[sender_wxid] = 0
         self.warning_records[sender_wxid] += 1
-    
+
         # 记录用户的违规消息ID（使用 msg.msg_id）
         if sender_wxid not in self.user_violations:
             self.user_violations[sender_wxid] = []
         self.user_violations[sender_wxid].append(msg.msg_id)
         logger.info(f"[KeywordMonitor] 用户 {sender_wxid} 的违规消息ID: {msg.msg_id}")
-    
+
         # 保存记录
         self._save_warning_records()
-    
+
         # 发送警告消息，并@用户
         warning_msg = f"@{msg.actual_user_nickname} 请注意，您发送的内容包含违规信息：{violation_type}，请在2分钟内撤回消息，否则将被移出群聊。"
         try:
@@ -454,10 +482,9 @@ class KeywordMonitorPlugin(Plugin):
             logger.info(f"[KeywordMonitor] 已警告用户 {sender_wxid}")
         except Exception as e:
             logger.error(f"[KeywordMonitor] 发送警告消息失败: {e}")
-    
+
         # 启动2分钟倒计时，检查用户是否撤回了违规消息
         self._start_countdown(sender_wxid, group_id, group_name, msg.msg_id, msg)  # 传递 msg 对象
-
 
     def _start_countdown(self, sender_wxid, group_id, group_name, violation_msg_id, msg):
         """启动2分钟倒计时，检查用户是否撤回了违规消息"""
@@ -481,7 +508,7 @@ class KeywordMonitorPlugin(Plugin):
         # 启动2分钟倒计时
         timer = threading.Timer(120, check_and_remove)  # 120秒 = 2分钟
         timer.start()
-    
+
     def _is_message_recalled(self, msg):
         """检查消息是否被撤回"""
         try:
@@ -489,7 +516,7 @@ class KeywordMonitorPlugin(Plugin):
             if not hasattr(msg, 'msg_id'):
                 logger.error(f"[KeywordMonitor] 消息对象缺少 msg_id 属性")
                 return False
-    
+
             # 检查消息 ID 是否在 recalled_messages 集合中
             return str(msg.msg_id) in self.recalled_messages
         except Exception as e:
