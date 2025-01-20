@@ -27,22 +27,6 @@ class KeywordMonitorPlugin(Plugin):
     # 常量定义
     PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
     WARNING_FILE = os.path.join(PLUGIN_DIR, "user_warnings.json")  # 将 WARNING_FILE 定义移到类的顶层作用域
-    AD_URL_PATTERNS = [
-        r'.*ad\.com.*',  # 匹配包含 "ad.com" 的 URL
-        r'.*doubleclick\.net.*',  # 匹配包含 "doubleclick.net" 的 URL
-        r'.*googleads\.g\.doubleclick\.net.*',  # 匹配 Google Ads 的 URL
-        r'.*ads\.yahoo\.com.*',  # 匹配 Yahoo Ads 的 URL
-        r'.*tracking\.com.*',  # 匹配包含 "tracking.com" 的 URL
-        r'.*affiliate\.com.*',  # 匹配包含 "affiliate.com"的 URL
-        r'.*promo\.com.*',  # 匹配包含 "promo.com" 的 URL
-    ]
-    UNSUPPORTED_URL_PATTERNS = [
-        r'.*finder\.video\.qq\.com.*',
-        r'.*support\.weixin\.qq\.com/update.*',
-        r'.*support\.weixin\.qq\.com/security.*',
-        r'.*mp\.weixin\.qq\.com/mp/waerrpage.*',
-    ]
-
     def __init__(self):
         super().__init__()
         self.recalled_messages = set()  # 用于存储撤回的消息ID
@@ -78,6 +62,30 @@ class KeywordMonitorPlugin(Plugin):
                 self.keyword_check_enabled = self.config.get("keyword_check_enabled", False)
                 self.file_check_enabled = self.config.get("file_check_enabled", False)
                 self.warning_limit = self.config.get("warning_limit", 2)
+
+            # 从配置文件中提取 AD_URL_PATTERNS 和 UNSUPPORTED_URL_PATTERNS
+            # 广告链接
+            self.AD_URL_PATTERNS = self.config.get("ad_url_patterns", [
+                r'.*ad\.com.*',
+                r'.*doubleclick\.net.*',
+                r'.*googleads\.g\.doubleclick\.net.*',
+                r'.*ads\.yahoo\.com.*',
+                r'.*tracking\.com.*',
+                r'.*affiliate\.com.*',
+                r'.*promo\.com.*',
+            ])
+            #不支持的 URL 列表
+            self.UNSUPPORTED_URL_PATTERNS = self.config.get("unsupported_url_patterns", [
+                r'.*finder\.video\.qq\.com.*',
+                r'.*support\.weixin\.qq\.com/update.*',
+                r'.*support\.weixin\.qq\.com/security.*',
+                r'.*mp\.weixin\.qq\.com/mp/waerrpage.*',
+            ])
+            
+            # 从配置文件中提取 whitelist_urls 白名单
+            self.whitelist_urls = self.config.get("whitelist_urls", [
+                r'.*wxapp\.tc\.qq\.com.*',  # 默认白名单 URL
+            ])
 
             # 检查是否是 gewechat 渠道
             if conf().get("channel_type") != "gewechat":
@@ -174,17 +182,31 @@ class KeywordMonitorPlugin(Plugin):
             logger.error(f"[KeywordMonitor] 保存用户违规记录失败: {e}")
 
     def _analyze_content(self, content):
+
         """分析内容是否包含违规信息"""
         prompt = (
-            "请分析以下内容，并判断是否包含以下违规信息：\n"
-            "1. 广告（如商品推广、营销信息等）\n"
-            "2. 购物（如拼多多、淘宝、京东等购物平台链接）\n"
-            "3. 赌博（如赌博网站、赌博游戏等）\n"
+            "请仔细分析以下内容，并判断是否包含以下违规信息：\n"
+            "1. 广告（如未经授权的商业广告、营销信息等）\n"
+            "2. 购物（如拼多多、淘宝、京东等购物平台链接，仅限非法推广）\n"
+            "3. 赌博（如非法赌博网站、赌博游戏等）\n"
             "4. 反动（如政治敏感、违法信息等）\n"
-            "5. 色情（如色情内容、成人网站等）\n"
+            "5. 色情（如成人内容、淫秽信息等）\n"
+            "\n"
+            "请特别注意以下合规内容类型：\n"
+            "- 普法宣传（如法律知识、法规解读、案例分析等）\n"
+            "- 反诈骗宣传（如提醒用户警惕诈骗、普及防骗知识等）\n"
+            "- 法律公告、法院通知或政府公告\n"
+            "- 合法讨论或教育目的的内容\n"
+            "\n"
             "请按以下格式返回结果：\n"
-            "- 如果内容合规，返回：'合规'\n"
+            "- 如果内容属于普法宣传，请返回：'合规'\n"
+            "- 如果内容属于反诈骗宣传，请返回：'合规'\n"
+            "- 如果内容属于法律公告、法院通知或政府公告，请返回：'合规'\n"
+            "- 如果内容涉及合法讨论或教育目的，请返回：'合规'\n"
             "- 如果内容违规，返回：'违规类型: <类型>'（例如：'违规类型: 广告'）\n"
+            "\n"
+            "请严格按照以上格式返回结果，不要返回其他额外信息。\n"
+            "\n"
             "内容：\n" + content
         )
 
@@ -246,21 +268,32 @@ class KeywordMonitorPlugin(Plugin):
 
     def is_unsupported_url(self, url):
         """判断给定的 URL 是否是不支持的 URL（如小程序、视频号等）"""
+        # 检查 URL 是否在白名单中
+        if any(re.search(pattern, url) for pattern in self.whitelist_urls):
+            logger.info(f"[KeywordMonitor] URL {url} 在白名单中，已忽略")
+            return False
+    
+        # 检查 URL 是否在不支持的 URL 列表中
         return any(re.search(pattern, url) for pattern in self.UNSUPPORTED_URL_PATTERNS)
 
     def on_handle_receive(self, e_context: EventContext):
         context = e_context['context']
         logger.debug(f"[KeywordMonitor] 收到群聊消息: {context}")
-        
+    
         try:
             # 检查是否是群聊消息
             if not context.kwargs.get('isgroup'):
                 return
-        
+    
             # 获取 GeWeChatMessage 对象
             msg = context.kwargs.get('msg')
             if not msg:
                 logger.error("[KeywordMonitor] 无法获取消息对象")
+                return
+    
+            # 如果消息类型是表情（EMOJI），则忽略 URL 检测
+            if context.type == ContextType.EMOJI:
+                logger.info(f"[KeywordMonitor] 消息 {getattr(msg, 'msg_id', '未知')} 是表情消息，已忽略 URL 检测")
                 return
         
             # 打印 msg 对象的完整信息
@@ -381,14 +414,18 @@ class KeywordMonitorPlugin(Plugin):
                 revokemsg = root.find("revokemsg")
                 if revokemsg is not None:
                     # 获取 newmsgid（与违规消息ID一致）
-                    newmsgid = revokemsg.find("newmsgid").text
-                    # 获取撤回提示信息
-                    replacemsg = revokemsg.find("replacemsg").text if revokemsg.find("replacemsg") is not None else "未知用户撤回了一条消息"
-                    logger.info(f"[KeywordMonitor] {replacemsg}, 消息ID: {newmsgid}")
+                    newmsgid_element = revokemsg.find("newmsgid")
+                    if newmsgid_element is not None:
+                        newmsgid = newmsgid_element.text
+                        # 获取撤回提示信息
+                        replacemsg = revokemsg.find("replacemsg").text if revokemsg.find("replacemsg") is not None else "未知用户撤回了一条消息"
+                        logger.info(f"[KeywordMonitor] {replacemsg}, 消息ID: {newmsgid}")
     
-                    # 记录撤回的消息ID（使用 newmsgid）
-                    self.recalled_messages.add(str(newmsgid))  # 确保 newmsgid 是字符串类型
-                    logger.info(f"[KeywordMonitor] 消息 {newmsgid} 已被撤回")
+                        # 记录撤回的消息ID（使用 newmsgid）
+                        self.recalled_messages.add(str(newmsgid))  # 确保 newmsgid 是字符串类型
+                        logger.info(f"[KeywordMonitor] 消息 {newmsgid} 已被撤回")
+                    else:
+                        logger.warning(f"[KeywordMonitor] 撤回消息中未找到 'newmsgid' 字段")
         except Exception as e:
             logger.error(f"[KeywordMonitor] 处理撤回消息失败: {e}")
             
