@@ -14,15 +14,13 @@ from plugins import *
 from config import conf
 from lib.gewechat.client import GewechatClient
 
-
-
 @plugins.register(
     name="KeywordMonitor",
     desire_priority=100,
     hidden=False,
     enabled=False,
     desc="监控群聊关键词、URL链接和文件内容，自动移除发送者",
-    version="0.9.0",
+    version="0.9.1",
     author="mailkf",
 )
 class KeywordMonitorPlugin(Plugin):
@@ -44,7 +42,6 @@ class KeywordMonitorPlugin(Plugin):
         r'.*support\.weixin\.qq\.com/security.*',
         r'.*mp\.weixin\.qq\.com/mp/waerrpage.*',
     ]
-
 
     def __init__(self):
         super().__init__()
@@ -321,7 +318,7 @@ class KeywordMonitorPlugin(Plugin):
                 for url in urls:
                     # 判断 URL 是否是不支持的 URL
                     if self.is_unsupported_url(url):
-                        self._handle_violation(sender_wxid, group_id, group_name, msg, "不支持的链接（小程序/视频号）")
+                        self._handle_violation(sender_wxid, group_id, group_name, msg, "（小程序/视频号）")
                         continue
         
                     # 判断 URL 是否包含广告内容
@@ -356,7 +353,7 @@ class KeywordMonitorPlugin(Plugin):
             # 解析消息内容中的 XML
             content = str(msg.content)  # 确保 content 是字符串类型
             logger.info(f"[KeywordMonitor] 收到撤回消息内容: {content}")
-            
+    
             # 尝试解析 XML
             try:
                 # 清理 XML 内容，移除不必要的前缀或后缀
@@ -364,15 +361,15 @@ class KeywordMonitorPlugin(Plugin):
                 if xml_start == -1:
                     logger.error(f"[KeywordMonitor] 撤回消息内容中未找到有效的 XML 部分: {content}")
                     return
-                
+    
                 # 只保留 XML 部分
                 content = content[xml_start:]
-                
+    
                 # 检查 XML 是否完整
                 if not content.endswith('</sysmsg>'):
                     logger.error(f"[KeywordMonitor] 撤回消息内容不完整: {content}")
                     return
-                
+    
                 # 解析 XML
                 root = ET.fromstring(content)
             except ET.ParseError as e:
@@ -388,7 +385,7 @@ class KeywordMonitorPlugin(Plugin):
                     # 获取撤回提示信息
                     replacemsg = revokemsg.find("replacemsg").text if revokemsg.find("replacemsg") is not None else "未知用户撤回了一条消息"
                     logger.info(f"[KeywordMonitor] {replacemsg}, 消息ID: {newmsgid}")
-                    
+    
                     # 记录撤回的消息ID（使用 newmsgid）
                     self.recalled_messages.add(str(newmsgid))  # 确保 newmsgid 是字符串类型
                     logger.info(f"[KeywordMonitor] 消息 {newmsgid} 已被撤回")
@@ -412,33 +409,37 @@ class KeywordMonitorPlugin(Plugin):
         # 保存记录
         self._save_warning_records()
     
-        # 发送警告消息
+        # 发送警告消息，并@用户
         warning_msg = f"@{msg.actual_user_nickname} 请注意，您发送的内容包含违规信息：{violation_type}，请在2分钟内撤回消息，否则将被移出群聊。"
         try:
-            self.client.post_text(self.app_id, group_id, warning_msg)
+            # 使用 ats 参数来@用户
+            self.client.post_text(self.app_id, group_id, warning_msg, ats=sender_wxid)
             logger.info(f"[KeywordMonitor] 已警告用户 {sender_wxid}")
         except Exception as e:
             logger.error(f"[KeywordMonitor] 发送警告消息失败: {e}")
     
         # 启动2分钟倒计时，检查用户是否撤回了违规消息
-        self._start_countdown(sender_wxid, group_id, group_name, msg.msg_id)
+        self._start_countdown(sender_wxid, group_id, group_name, msg.msg_id, msg)  # 传递 msg 对象
 
 
-    def _start_countdown(self, sender_wxid, group_id, group_name, violation_msg_id):
+    def _start_countdown(self, sender_wxid, group_id, group_name, violation_msg_id, msg):
         """启动2分钟倒计时，检查用户是否撤回了违规消息"""
         def check_and_remove():
             try:
                 # 检查该用户的违规消息是否被撤回
                 if str(violation_msg_id) not in self.recalled_messages:  # 确保消息ID是字符串类型
                     # 如果违规消息未被撤回，移除用户
-                    logger.info(f"[KeywordMonitor] 用户 {sender_wxid} 未在2分钟内撤回违规消息，准备移除")
+                    logger.info(f"用户 {sender_wxid} 未在2分钟内撤回违规消息[{violation_msg_id}]，准备移除")
                     self.client.remove_member(self.app_id, sender_wxid, group_id)
-                    logger.info(f"[KeywordMonitor] 已移除用户 {sender_wxid} 从群 {group_name}")
+                    logger.info(f"已移除用户 {sender_wxid} 从群 {group_name}")
                 else:
-                    # 如果违规消息已被撤回，只记录违规行为，不删除用户
-                    logger.info(f"[KeywordMonitor] 用户 {sender_wxid} 已撤回违规消息，不执行移除操作")
+                    # 如果违规消息已被撤回，发送感谢消息
+                    logger.info(f"用户 {sender_wxid} 已撤回违规消息[{violation_msg_id}]，发送感谢消息")
+                    thank_you_msg = f"@{msg.actual_user_nickname} 感谢您的理解与配合！在今后的交流中，还请您注意保持良好的聊天行为，营造友好和谐的沟通氛围。"
+                    self.client.post_text(self.app_id, group_id, thank_you_msg, ats=sender_wxid)
+                    logger.info(f"[KeywordMonitor] 已发送感谢消息给用户 {sender_wxid}")
             except Exception as e:
-                logger.error(f"[KeywordMonitor] 检查消息撤回状态或移除用户失败: {e}")
+                logger.error(f"检查消息撤回状态或移除用户失败: {e}")
     
         # 启动2分钟倒计时
         timer = threading.Timer(120, check_and_remove)  # 120秒 = 2分钟
