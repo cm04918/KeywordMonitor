@@ -24,8 +24,6 @@
     ".*mp\\.weixin\\.qq\\.com/mp/waerrpage.*"
   ],
   "whitelist_urls": [
-    ".*wxapp\\.tc\\.qq\\.com.*",
-    ".*weixin\\.qq\\.com.*",
     ".*\\.gov\\.cn.*",
     ".*\\.edu\\.cn.*",
     ".*\\.ac\\.cn.*",
