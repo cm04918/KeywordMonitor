@@ -14,7 +14,7 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
     "gewechat_base_url": "http://192.168.10.123:2531/v2/api",
     "gewechat_token": "2*******************",
 ```
-## 此插件只是娱乐，可能不会再更新，要改原版的内容，官方一更新，我都不记得改啥了！
+## 示例图
 ![本地图片](./img/20250120085324.png)
 
 
@@ -191,5 +191,6 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
 ## 版本历史
 - 2025年1月20日：
 - **0.9.1**：增加如果用户撤回了消息，我们发送一条感谢消息，提醒用户保持良好的聊天行为。
+- 增加了白名单功能，对域名过滤，优化提示词，增加了gewechat_message.py对表情与视频的识别。
 - **0.9.0**：初始版本发布，支持关键词、URL链接和文件内容监控。
 ```
