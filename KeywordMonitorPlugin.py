@@ -222,33 +222,47 @@ class KeywordMonitorPlugin(Plugin):
             ]
         }
     
-        try:
-            #logger.info(f"[KeywordMonitor] 开始分析内容: {content[:50]}...")  # 只记录前50个字符
-            logger.info(f"[KeywordMonitor] 开始分析内容: {content}")  # 只记录前50个字符
-            logger.info(f"[KeywordMonitor] 发送分析请求到 OpenAI API，内容长度: {len(content)}")
-            
-            # 发送请求到 OpenAI API
-            response = requests.post(f"{conf().get('open_ai_api_base')}/chat/completions", headers=headers, json=payload)
-            response.raise_for_status()
-            
-            logger.info(f"[KeywordMonitor] 收到 OpenAI API 响应，状态码: {response.status_code}")
-            
-            response_data = response.json()
-            logger.info(f"[KeywordMonitor] OpenAI API 响应数据: {response_data}")
-            
-            if "choices" in response_data and len(response_data["choices"]) > 0:
-                first_choice = response_data["choices"][0]
-                if "message" in first_choice and "content" in first_choice["message"]:
-                    result = first_choice["message"]["content"].strip()
-                    logger.info(f"[KeywordMonitor] 内容分析结果: {result}")
-                    return result
-            
-            logger.info(f"[KeywordMonitor] 内容分析结果: 合规 (默认)")
-            return "合规"
-        except Exception as e:
-            logger.error(f"[KeywordMonitor] 分析内容失败: {e}")
-            logger.info(f"[KeywordMonitor] 内容分析失败，默认返回合规")
-            return "合规"
+        max_retries = 2  # 最大重试次数
+        retry_count = 0
+    
+        while retry_count < max_retries:
+            try:
+                logger.info(f"[KeywordMonitor] 开始分析内容: {content}")
+                logger.info(f"[KeywordMonitor] 发送分析请求到 OpenAI API，内容长度: {len(content)}")
+                
+                # 发送请求到 OpenAI API
+                response = requests.post(f"{conf().get('open_ai_api_base')}/chat/completions", headers=headers, json=payload)
+                response.raise_for_status()
+                
+                logger.info(f"[KeywordMonitor] 收到 OpenAI API 响应，状态码: {response.status_code}")
+                
+                response_data = response.json()
+                logger.info(f"[KeywordMonitor] OpenAI API 响应数据: {response_data}")
+                
+                if "choices" in response_data and len(response_data["choices"]) > 0:
+                    first_choice = response_data["choices"][0]
+                    if "message" in first_choice and "content" in first_choice["message"]:
+                        result = first_choice["message"]["content"].strip()
+                        logger.info(f"[KeywordMonitor] 内容分析结果: {result}")
+    
+                        # 检查是否返回了不合规提示
+                        if result == "内容由于不合规被停止生成，我们换个话题吧":
+                            retry_count += 1
+                            logger.info(f"[KeywordMonitor] 内容分析返回不合规提示，进行第 {retry_count} 次重试")
+                            continue  # 继续重试
+                        
+                        return result
+                
+                logger.info(f"[KeywordMonitor] 内容分析结果: 合规 (默认)")
+                return "合规"
+            except Exception as e:
+                logger.error(f"[KeywordMonitor] 分析内容失败: {e}")
+                logger.info(f"[KeywordMonitor] 内容分析失败，默认返回合规")
+                return "合规"
+    
+        # 如果重试次数用尽，返回默认合规
+        logger.info(f"[KeywordMonitor] 重试次数用尽，返回默认合规")
+        return "合规"
 
     def _extract_all_links(self, message_content):
         """提取消息中的所有链接（包括网页分享、小程序等）"""
@@ -333,6 +347,11 @@ class KeywordMonitorPlugin(Plugin):
                         f"消息类型: {message_type}, "
                         f"消息内容: {getattr(msg, 'content', '未知')[:100]}")
     
+            # 检查是否是红包消息
+            if self._is_redpacket_message(msg):
+                logger.info(f"[KeywordMonitor] 消息 {getattr(msg, 'msg_id', '未知')} 是红包消息，已忽略检测")
+                return
+    
             # 如果配置了忽略@机器人的消息，则检查是否@机器人
             if self.ignore_at_bot_msg and msg.is_at:
                 logger.info(f"[KeywordMonitor] 消息 {getattr(msg, 'msg_id', '未知')} 是@机器人的消息，已忽略")
@@ -408,6 +427,20 @@ class KeywordMonitorPlugin(Plugin):
     
         except Exception as e:
             logger.error(f"[KeywordMonitor] 处理消息异常: {e}")
+    
+    def _is_redpacket_message(self, msg):
+        """判断消息是否为红包消息"""
+        try:
+            # 获取消息内容
+            message_content = getattr(msg, 'content', '')
+            
+            # 检查消息内容是否包含红包相关的 XML 标签
+            if '<type><![CDATA[2001]]></type>' in message_content and '<title><![CDATA[微信红包]]></title>' in message_content:
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"[KeywordMonitor] 判断红包消息失败: {e}")
+            return False
 
     def _handle_recall_message(self, msg):
         """处理撤回消息"""
