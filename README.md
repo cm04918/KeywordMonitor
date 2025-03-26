@@ -1,32 +1,9 @@
 
 # KeywordMonitor 插件
 
-2025年3月26日更新文件“KeywordMonitorPlugin-0.1.25.py”“config-0.1.25.json” 直接适配DOW 0.1.25 无需修改DOW的其他文件，意思就是说无需**【替换文件：(请替换前备份以前的文件)
+2025年3月26日更新文件,直接适配DOW 0.1.25 无需修改DOW的其他文件.
 
-    bridge\context.py
-    
-    channel\gewechat\gewechat_channel.py
-    
-    channel\gewechat\gewechat_message.py
-    
-】** 操作，请注意，无需操作。
-
-**如你是DOW 0.1.25**
-
-只需要文件“**KeywordMonitorPlugin-0.1.25.py**”“**config-0.1.25.json**” “**__init__.py**”放置到目录“**\plugins\KeywordMonitorPlugin**” 修改去掉“**KeywordMonitorPlugin-0.1.25.py**”“**config-0.1.25.json**” 文件名称**-0.1.25**完整的是
-
-\plugins\KeywordMonitorPlugin\__init__.py
-
-\plugins\KeywordMonitorPlugin\config.json
-
-\plugins\KeywordMonitorPlugin\KeywordMonitorPlugin.py
-
-
-
-**如你是DOW 0.1.25 前版本**
-
-则不需要“**KeywordMonitorPlugin-0.1.25.py**”“**config-0.1.25.json**” 两个文件，还需要替换原DOW相关文件。
-
+将OPENAI的配置，直接放到了插件目录！
 
 
 ## 简介
