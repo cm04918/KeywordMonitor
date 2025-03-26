@@ -12,9 +12,6 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
 
 根目录下comfig.json需要有配置，本插件是通过AI分析URL是否违规：
 ```json
-    "model": "kimi",
-    "open_ai_api_base": "https://***/v1",
-    "open_ai_api_key": "sk-xTYifeB7vMG2mUp4111816A4C6124f8cA0Dc741528E04cDd",
     "gewechat_app_id": "wx_d***********",
     "gewechat_base_url": "http://192.168.10.123:2531/v2/api",
     "gewechat_token": "2*******************",
@@ -91,9 +88,51 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
 
 ## 安装与配置
 
-### 1. 安装插件
+## DOW项目KeywordMonitorPlugin插件安装教程
 
-将 `KeywordMonitorPlugin.py` 和 `config.json` 文件放置在插件目录中。
+## 安装步骤
+
+1. **进入项目目录**
+   ```bash
+   cd DOW项目目录/plugins/
+   ```
+
+2. **克隆插件仓库**
+   ```bash
+   git clone https://github.com/cm04918/KeywordMonitorPlugin
+   ```
+
+3. **进入插件目录**
+   ```bash
+   cd KeywordMonitorPlugin
+   ```
+
+4. **修改配置文件**
+   - 用文本编辑器打开 `config.json` 文件
+   - 根据您的需求修改配置参数
+   - 保存文件
+
+## 插件管理命令
+
+在机器人对话中执行以下命令来管理插件：
+
+1. **扫描新插件**
+   ```
+   #scanp
+   ```
+   *此命令会扫描插件目录以检测新安装的插件*
+
+2. **查看插件列表**
+   ```
+   #plist
+   ```
+   *此命令会显示当前所有可用插件的列表*
+
+3. **启用插件**
+   ```
+   #enablep KeywordMonitor
+   ```
+   *此命令会启用KeywordMonitor插件*
 
 ### 2. 配置插件
 
