@@ -14,6 +14,7 @@
 **如你是DOW 0.1.25**
 
 只需要文件“**KeywordMonitorPlugin-0.1.25.py**”“**config-0.1.25.json**” “**__init__.py**”放置到目录“**\plugins\KeywordMonitorPlugin**” 修改去掉“**KeywordMonitorPlugin-0.1.25.py**”“**config-0.1.25.json**” 文件名称**-0.1.25**完整的是
+
 \plugins\KeywordMonitorPlugin\__init__.py
 
 \plugins\KeywordMonitorPlugin\config.json
