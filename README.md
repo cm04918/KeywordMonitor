@@ -53,7 +53,7 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
 ![本地图片](./img/20250119205507.png)
 
 ## 插件使用要求：
-### 替换文件：(请替换前备份以前的文件)
+### 替换文件：(请替换前备份以前的文件)0.1.25前版本。后版本看顶部说明。
    - bridge\context.py
    - channel\gewechat\gewechat_channel.py
    - channel\gewechat\gewechat_message.py
