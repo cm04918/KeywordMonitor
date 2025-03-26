@@ -1,0 +1,38 @@
+{
+  "enabled": true,
+  "keywords": ["话费充值打折","抖音退费","机票退改签","会员退费","培训学费退费","网络高薪兼职","兼职刷单"],
+  "monitored_groups": ["三人行","AI外卖员"],
+  "whitelist": [],
+  "ignore_at_bot_msg": true,
+  "url_check_enabled": true,
+  "keyword_check_enabled": true,
+  "file_check_enabled": true,
+  "warning_limit": 20,
+  "ad_url_patterns": [
+    ".*ad\\.com.*",
+    ".*doubleclick\\.net.*",
+    ".*googleads\\.g\\.doubleclick\\.net.*",
+    ".*ads\\.yahoo\\.com.*",
+    ".*tracking\\.com.*",
+    ".*affiliate\\.com.*",
+    ".*promo\\.com.*"
+  ],
+  "unsupported_url_patterns": [
+    ".*finder\\.video\\.qq\\.com.*",
+    ".*support\\.weixin\\.qq\\.com/update.*",
+    ".*support\\.weixin\\.qq\\.com/security.*",
+    ".*mp\\.weixin\\.qq\\.com/mp/waerrpage.*"
+  ],
+  "whitelist_urls": [
+    ".*\\.gov\\.cn.*",
+    ".*\\.edu\\.cn.*",
+    ".*\\.ac\\.cn.*",
+    ".*\\.people\\.com\\.cn.*",
+    ".*\\.xinhuanet\\.com.*",
+    ".*\\.cctv\\.com.*",
+    ".*\\.china\\.com\\.cn.*"
+  ],
+  "open_ai_api_key": "sk-xTYifeB7vMG2mUp4111816A4C6124f8cA0Dc741528E04cDd",
+  "open_ai_api_base": "http://192.168.10.123:3000/v1",
+  "model": "kimi"
+}
