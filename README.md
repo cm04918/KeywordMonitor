@@ -30,10 +30,8 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
 ![本地图片](./img/20250119205507.png)
 
 ## 插件使用要求：
-### 替换文件：(请替换前备份以前的文件)0.1.25前版本。后版本看顶部说明。
-   - bridge\context.py
-   - channel\gewechat\gewechat_channel.py
-   - channel\gewechat\gewechat_message.py
+
+插件主要是利用GPT对每一段话进行分析，也可以使用关键词进行。根据你的情况配置！
 
 ### 将插件安装到 /plugins/KeywordMonitorPlugin
 
@@ -95,7 +93,7 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
 
 ### 1. 安装插件
 
-将 `KeywordMonitorPlugin.py` 和 `config.json` 文件放置在插件目录中，并在 `__init__.py` 中导入插件。
+将 `KeywordMonitorPlugin.py` 和 `config.json` 文件放置在插件目录中。
 
 ### 2. 配置插件
 
@@ -103,16 +101,16 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
 
 ```json
 {
-  "enabled": true,  // 是否启用插件
-  "keywords": ["话费充值打折", "抖音退费", "机票退改签", "会员退费", "培训学费退费", "网络高薪兼职"],  // 监控的关键词列表
-  "monitored_groups": ["三人行", "AI外卖员"],  // 监控的群名称列表
-  "whitelist": [],  // 白名单用户ID列表
-  "ignore_at_bot_msg": true,  // 是否忽略@机器人的消息
-  "url_check_enabled": true,  // 是否开启URL检测
-  "keyword_check_enabled": true,  // 是否开启关键词检测
-  "file_check_enabled": true,  // 是否开启文件检测
-  "warning_limit": 20,  // 警告次数限制
-  "ad_url_patterns": [  // 广告URL模式
+  "enabled": true,
+  "keywords": ["话费充值打折","抖音退费","机票退改签","会员退费","培训学费退费","网络高薪兼职","兼职刷单"],
+  "monitored_groups": ["三人行","AI外卖员","浩扬电子书城","ql"],
+  "whitelist": [],
+  "ignore_at_bot_msg": true,
+  "url_check_enabled": true,
+  "keyword_check_enabled": true,
+  "file_check_enabled": true,
+  "warning_limit": 20,
+  "ad_url_patterns": [
     ".*ad\\.com.*",
     ".*doubleclick\\.net.*",
     ".*googleads\\.g\\.doubleclick\\.net.*",
@@ -121,14 +119,123 @@ KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat
     ".*affiliate\\.com.*",
     ".*promo\\.com.*"
   ],
-  "unsupported_url_patterns": [  // 不支持的URL模式
+  "unsupported_url_patterns": [
     ".*finder\\.video\\.qq\\.com.*",
     ".*support\\.weixin\\.qq\\.com/update.*",
     ".*support\\.weixin\\.qq\\.com/security.*",
     ".*mp\\.weixin\\.qq\\.com/mp/waerrpage.*"
-  ]
+  ],
+  "whitelist_urls": [
+    ".*\\.gov\\.cn.*",
+    ".*\\.edu\\.cn.*",
+    ".*\\.ac\\.cn.*",
+    ".*\\.people\\.com\\.cn.*",
+    ".*\\.xinhuanet\\.com.*",
+    ".*\\.cctv\\.com.*",
+    ".*\\.china\\.com\\.cn.*"
+  ],
+  "open_ai_api_key": "sk-xTYifeB7vMG2mUp4111816A4C6124f8cA0Dc741528E04cDd",
+  "open_ai_api_base": "http://192.168.10.123:3000/v1",
+  "model": "kimi"
 }
 ```
+
+### 配置说明：
+```json
+{
+  // 是否启用插件，true 表示启用，false 表示禁用，默认值为 false
+  "enabled": true,
+
+  // 需要监控的关键词列表，用于检测群聊消息中是否包含这些词语
+  // 当前配置针对常见的诈骗或广告关键词
+  "keywords": [
+    "话费充值打折",      // 手机话费充值折扣相关诈骗关键词
+    "抖音退费",          // 抖音平台退费诈骗关键词
+    "机票退改签",        // 机票退改签相关诈骗关键词
+    "会员退费",          // 会员服务退费诈骗关键词
+    "培训学费退费",      // 培训机构学费退费诈骗关键词
+    "网络高薪兼职",      // 网络高薪兼职诈骗关键词
+    "兼职刷单"           // 兼职刷单诈骗关键词
+  ],
+
+  // 需要监控的群聊名称列表，仅监控这些群的消息
+  // 如果列表为空，则监控所有群聊
+  "monitored_groups": [
+    "三人行",            // 群聊名称 1
+    "AI外卖员",          // 群聊名称 2
+    "浩扬电子书城",      // 群聊名称 3
+    "ql"                 // 群聊名称 4
+  ],
+
+  // 白名单用户ID列表，这些用户的消息将被忽略，不进行监控
+  // 当前为空，表示没有白名单用户
+  "whitelist": [],
+
+  // 是否忽略@机器人的消息，true 表示忽略，false 表示不忽略，默认值为 true
+  // 防止机器人自身的消息触发监控
+  "ignore_at_bot_msg": true,
+
+  // 是否启用URL链接检测，true 表示启用，false 表示禁用，默认值为 false
+  // 启用后会对消息中的链接进行检查
+  "url_check_enabled": true,
+
+  // 是否启用关键词检测，true 表示启用，false 表示禁用，默认值为 false
+  // 启用后会检查消息是否包含 keywords 中的词语
+  "keyword_check_enabled": true,
+
+  // 是否启用文件内容检测，true 表示启用，false 表示禁用，默认值为 false
+  // 启用后会分析群聊中上传的文件内容，，此功能未完善
+  "file_check_enabled": true,
+
+  // 违规次数限制，达到此值后用户将被踢出群聊
+  // 当前设置为 20，表示用户违规 20 次后被踢出
+  "warning_limit": 20,
+
+  // 广告URL的正则表达式模式列表，用于检测消息中的链接是否为广告链接
+  "ad_url_patterns": [
+    ".*ad\\.com.*",                     // 匹配包含 "ad.com" 的域名
+    ".*doubleclick\\.net.*",            // 匹配 Google DoubleClick 广告服务
+    ".*googleads\\.g\\.doubleclick\\.net.*", // 匹配 Google 广告服务子域
+    ".*ads\\.yahoo\\.com.*",            // 匹配 Yahoo 广告服务
+    ".*tracking\\.com.*",               // 匹配常见的跟踪域名
+    ".*affiliate\\.com.*",              // 匹配联盟营销域名
+    ".*promo\\.com.*"                   // 匹配促销相关域名
+  ],
+
+  // 不支持的URL正则表达式模式列表，用于检测小程序或视频号等不受支持的链接
+  "unsupported_url_patterns": [
+    ".*finder\\.video\\.qq\\.com.*",         // 匹配腾讯视频号相关链接
+    ".*support\\.weixin\\.qq\\.com/update.*", // 匹配微信更新支持页面
+    ".*support\\.weixin\\.qq\\.com/security.*", // 匹配微信安全支持页面
+    ".*mp\\.weixin\\.qq\\.com/mp/waerrpage.*" // 匹配微信小程序错误页面
+  ],
+
+  // URL白名单正则表达式模式列表，这些链接将被忽略，不视为违规
+  // 当前配置包含政府、教育和官方媒体域名
+  "whitelist_urls": [
+    ".*\\.gov\\.cn.*",         // 匹配中国政府网站
+    ".*\\.edu\\.cn.*",         // 匹配中国教育机构网站
+    ".*\\.ac\\.cn.*",          // 匹配中国学术机构网站
+    ".*\\.people\\.com\\.cn.*", // 匹配人民日报网站
+    ".*\\.xinhuanet\\.com.*",   // 匹配新华网
+    ".*\\.cctv\\.com.*",        // 匹配央视网
+    ".*\\.china\\.com\\.cn.*"   // 匹配中国网
+  ],
+
+  // OpenAI API 的密钥，用于调用内容分析服务
+  // 当前为示例密钥，需替换为实际有效的密钥
+  "open_ai_api_key": "sk-xTYifeB7vMG2mUp4111816A4C6124f8cA0Dc741528E04cDd",
+
+  // OpenAI API 的基础地址，用于指定 API 请求的目标服务器
+  // 当前设置为本地服务器地址，需根据实际部署调整
+  "open_ai_api_base": "http://192.168.10.123:3000/v1",
+
+  // OpenAI 使用的模型名称，指定调用哪个模型进行内容分析
+  // 当前设置为 "kimi"，需确保服务器支持此模型
+  "model": "kimi"
+}
+```
+
 
 ### 3. 启动插件
 
