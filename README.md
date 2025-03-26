@@ -1,6 +1,28 @@
 
 # KeywordMonitor 插件
 
+2025年3月26日更新文件“KeywordMonitorPlugin-0.1.25.py”“config-0.1.25.json” 直接适配DOW 0.1.25 无需修改DOW的其他文件，意思就是说无需**【替换文件：(请替换前备份以前的文件)
+
+    bridge\context.py
+    channel\gewechat\gewechat_channel.py
+    channel\gewechat\gewechat_message.py
+    
+】** 操作，请注意，无需操作。
+
+**如你是DOW 0.1.25**
+
+只需要文件“**KeywordMonitorPlugin-0.1.25.py**”“**config-0.1.25.json**” “**__init__.py**”放置到目录“**\plugins\KeywordMonitorPlugin**” 修改去掉“**KeywordMonitorPlugin-0.1.25.py**”“**config-0.1.25.json**” 文件名称**-0.1.25**完整的是
+\plugins\KeywordMonitorPlugin\__init__.py
+\plugins\KeywordMonitorPlugin\config.json
+\plugins\KeywordMonitorPlugin\KeywordMonitorPlugin.py
+
+
+**如你是DOW 0.1.25 前版本**
+
+则不需要“**KeywordMonitorPlugin-0.1.25.py**”“**config-0.1.25.json**” 两个文件，还需要替换原DOW相关文件。
+
+
+
 ## 简介
 
 KeywordMonitor 是一个用于 https://github.com/hanfangyuan4396/dify-on-wechat 利用GTP来监控群聊关键词、URL链接和文件内容的插件。当检测到违规内容时，插件会自动发送警告消息，并要求用户在2分钟内撤回违规消息。如果用户未在规定时间内撤回消息，插件将自动将其移出群聊。该插件旨在帮助群管理员自动管理群聊内容，减少人工干预，确保群聊环境的健康和安全。
