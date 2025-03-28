@@ -391,12 +391,7 @@ class KeywordMonitorPlugin(Plugin):
         except Exception as e:
             logger.error(f"[KeywordMonitor] 发送警告消息失败给用户 {user_display} 在群 {group_display}: {e}")
         
-        # 检查是否达到违规次数上限
-        if self.warning_records[sender_wxid] >= self.warning_limit:
-            logger.info(f"[KeywordMonitor] 用户 {user_display} 违规次数达到上限 {self.warning_limit}，将被踢出")
-            self._kick_user(sender_wxid, group_id, group_name, violation_type, True, msg.actual_user_nickname)
-        else:
-            self._start_countdown(sender_wxid, group_id, group_name, msg.msg_id, msg, violation_type)
+        self._start_countdown(sender_wxid, group_id, group_name, msg.msg_id, msg, violation_type)
 
     def _check_and_process_recalled_message(self, recalled_msg_id, msg):
         """检查并处理被撤回的消息，仅清理记录，不减少计数"""
@@ -411,44 +406,29 @@ class KeywordMonitorPlugin(Plugin):
                     self.user_violations[user_id] = [(mid, vtype) for mid, vtype in violations if mid != recalled_msg_id_str]
                     if not self.user_violations[user_id]:
                         del self.user_violations[user_id]
-                    if recalled_msg_id_str in self.violation_timers:
-                        self.violation_timers[recalled_msg_id_str].cancel()
-                        del self.violation_timers[recalled_msg_id_str]
                     self.processed_recalls.add(recalled_msg_id_str)
                     user_display = f"{msg.actual_user_nickname}（{user_id}）"
                     group_display = f"{msg.other_user_nickname}({msg.from_user_id})"
-                    try:
-                        self.client.post_text(self.app_id, msg.from_user_id,
-                                            f"@{msg.actual_user_nickname} 感谢您的理解与配合！在今后的交流中，还请您注意保持良好的聊天行为，营造友好和谐的沟通氛围。当前违规次数：{self.warning_records[user_id]}",
-                                            ats=user_id)
-                        logger.info(f"[KeywordMonitor] 已发送感谢消息给用户 {user_display} 在群 {group_display}")
-                    except Exception as e:
-                        logger.error(f"[KeywordMonitor] 发送感谢消息失败给用户 {user_display} 在群 {group_display}: {e}")
-                    
-                    # 检查违规次数是否达到上限，即使撤回也踢出
-                    if self.warning_records[user_id] >= self.warning_limit:
-                        logger.info(f"[KeywordMonitor] 用户 {user_display} 违规次数 {self.warning_records[user_id]} 达到上限 {self.warning_limit}，将被踢出")
-                        self._kick_user(user_id, msg.from_user_id, msg.other_user_nickname, v_type, True, msg.actual_user_nickname)
+
+                    logger.info(f"[KeywordMonitor] 用户 {user_display} 已撤回消息[{recalled_msg_id_str}]，等待倒计时检查是否超限")
                     return
 
-
-
     def _start_countdown(self, sender_wxid, group_id, group_name, violation_msg_id, msg, violation_type):
-        """启动2分钟倒计时检查撤回"""
+        """启动2分钟倒计时检查撤回并决定是否踢人"""
         def check_and_notify():
             violation_msg_id_str = str(violation_msg_id)
+            user_display = f"{msg.actual_user_nickname}（{sender_wxid}）"
+            group_display = f"{group_name}({group_id})"
+            
             with self.recalled_messages_lock:
                 if violation_msg_id_str not in self.recalled_messages:
-                    user_display = f"{msg.actual_user_nickname}（{sender_wxid}）"
-                    group_display = f"{group_name}({group_id})"
-                    logger.info(f"[KeywordMonitor] 用户 {user_display} 未撤回消息[{violation_msg_id_str}]，移出群聊 {group_display}")
+                    # 未撤回消息，直接踢人
+                    logger.info(f"[KeywordMonitor] 用户 {user_display} 未撤回消息[{violation_msg_id_str}]，2分钟后移出群聊 {group_display}")
                     self._kick_user(sender_wxid, group_id, group_name, violation_type, False, msg.actual_user_nickname)
                 else:
-                    # 如果撤回但次数达到上限，仍然踢出
+                    # 已撤回但检查是否达到上限
                     if self.warning_records[sender_wxid] >= self.warning_limit:
-                        user_display = f"{msg.actual_user_nickname}（{sender_wxid}）"
-                        group_display = f"{group_name}({group_id})"
-                        logger.info(f"[KeywordMonitor] 用户 {user_display} 已撤回消息[{violation_msg_id_str}]，但违规次数达到上限 {self.warning_limit}，将被踢出")
+                        logger.info(f"[KeywordMonitor] 用户 {user_display} 已撤回消息[{violation_msg_id_str}]，但违规次数达到上限 {self.warning_limit}，2分钟后将被踢出")
                         self._kick_user(sender_wxid, group_id, group_name, violation_type, True, msg.actual_user_nickname)
                     else:
                         # 发送感谢消息
@@ -458,6 +438,7 @@ class KeywordMonitorPlugin(Plugin):
                             logger.info(f"[KeywordMonitor] 已发送感谢消息给用户 {user_display} 在群 {group_display}")
                         except Exception as e:
                             logger.error(f"[KeywordMonitor] 发送感谢消息失败给用户 {user_display} 在群 {group_display}: {e}")
+            
             if violation_msg_id_str in self.violation_timers:
                 del self.violation_timers[violation_msg_id_str]
         
@@ -469,16 +450,15 @@ class KeywordMonitorPlugin(Plugin):
         logger.info(f"[KeywordMonitor] 启动倒计时，用户: {user_display}, 消息ID: {violation_msg_id}, 群: {group_display}")
 
     def _kick_user(self, user_id, group_id, group_name, violation_type, exceed_limit, user_nickname=None):
-        """将用户移出群聊（使用新脚本的踢人逻辑）"""
+        """将用户移出群聊（2分钟后执行）"""
         user_display = f"{user_nickname or '未知用户'}（{user_id}）"
         group_display = f"{group_name}({group_id})"
-        logger.info(f"[KeywordMonitor] 准备踢出用户 {user_display}，原因: {violation_type}, 超限: {exceed_limit}")
+        logger.info(f"[KeywordMonitor] 2分钟后踢出用户 {user_display}，原因: {violation_type}, 超限: {exceed_limit}")
         try:
-            # 使用新脚本的 remove_member 调用方式：(app_id, user_id, group_id)
             response = self.client.remove_member(self.app_id, user_id, group_id)
             logger.info(f"[KeywordMonitor] remove_member API 返回: {response}")
             if exceed_limit:
-                kick_msg = f"用户 {user_display} 因违规次数达到上限（违规类型: {violation_type}），已被移出群聊。"
+                kick_msg = f"用户 {user_display} 因违规次数达到上限（违规类型: {violation_type}），将被移出群聊。"
             else:
                 kick_msg = f"用户 {user_display} 因未在规定时间内撤回违规消息（违规类型: {violation_type}，次数: {self.warning_records[user_id]}），已被移出群聊 {group_display}。"
             self.client.post_text(self.app_id, group_id, kick_msg)
